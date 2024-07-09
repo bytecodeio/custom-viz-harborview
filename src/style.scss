@@ -1,0 +1,172 @@
+
+$text-color: #262D33;
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@100;300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css?family=Open+Sans');
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap');
+
+
+body{
+    font-family: 'Roboto', sans-serif;
+}
+
+#vis {
+  margin: 0;
+}
+
+#app .btn-group {
+    border-radius: 3px;
+    margin-right: 0px;
+    margin-left: 20px;
+    font-family: 'Roboto', sans-serif;
+    margin-bottom: -30px;
+}
+
+#app {
+  color: $text-color;
+  height: 100%;
+
+  #title {
+    font-size: 24px;
+    font-weight: 600;
+  }
+
+  #header {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  #vis-wrapper {
+    height: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+
+    font-family: 'Roboto', sans-serif;
+  }
+
+  #title-kpi-wrapper{
+    display: flex;
+    justify-content: center;
+    height: auto;
+  margin-bottom: 10px;
+  }
+
+  #chart-wrapper {
+    width: 100%;
+    height: 100%;
+    min-height: 330px;
+  }
+
+  #chart {
+    max-height: 100%;
+  }
+
+  // Controls
+
+  .btn-group {
+    border-radius: 3px;
+    // margin-top: 30px;
+  }
+
+  .btn {
+    font-size: 12px;
+  }
+
+  .btn-primary {
+    background-color: #ffffff;
+    border-color: #d0d9e1;
+    color: $text-color;
+
+    &:hover {
+      cursor: pointer;
+      background-color: #f5f6f7;
+    }
+  }
+
+  .btn.active {
+    background-color: #e8edf3;
+  }
+}
+
+// Chart tooltip
+.chartjs-tooltip {
+  opacity: 1;
+  position: absolute;
+  padding: 8px 10px;
+  pointer-events: none;
+  background-color: #1d1e20;
+  color: #ffffff;
+  border-radius: 4px;
+  padding-right: 30px;
+
+  .dimension-label {
+    color: white;
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  .pivot-label {
+    align-items: center;
+    display: flex;
+
+    .pivot-color {
+      border-radius: 1px;
+      display: inline-block;
+      height: 8px;
+      width: 8px;
+    }
+
+    .pivot-text {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+  }
+
+  .measure-comparison-wrapper {
+    display: flex;
+    // align-items: center;
+  }
+
+  .measure-value {
+    font-size: 12px;
+    font-weight: 400px;
+  }
+
+  .period-comparison-wrapper {
+    display: flex;
+    align-items: center;
+    font-size: 10px;
+    line-height: 14px;
+    display: flex;
+    border-radius: 4px;
+    padding: 1px 2px;
+    margin-left: 10px;
+  }
+
+  .positive-background {
+    background-color: rgba(0, 188, 64, 0.23);
+  }
+
+  .negative-background {
+    background-color: rgba(230, 0, 0, 0.25);
+  }
+
+  .comparison-value {
+    margin-left: 3px;
+  }
+
+  .positive-text {
+    color: #4bbe00;
+  }
+
+  .negative-text {
+    color: #ff1e00;
+  }
+
+  #comparison-label {
+    font-size: 10px;
+    margin-left: 6px;
+  }
+}
