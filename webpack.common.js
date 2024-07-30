@@ -1,7 +1,9 @@
 const path = require("path");
 
 module.exports = {
-  entry: "./src/customVis.tsx",
+  entry: {
+    bar: "./src/customBarVis.tsx",
+  },
   module: {
     rules: [
       {
@@ -17,12 +19,23 @@ module.exports = {
       exclude: /node_modules/,
     },
     {
+      test: /\.(js|jsx)$/i,
+      use: "babel-loader",
+      exclude: /node_modules/,
+      include: /src/,
+      sideEffects: false,
+    },
+    {
       test: /\.s[ac]ss$/,
       use: ["style-loader", "css-loader", "sass-loader"],
     },
     {
       test: /\.(woff|woff2|eot|otf|ttf)$/,
       type: "asset/inline",
+    },
+    { 
+      test: /\.css$/i,
+      use: ["style-loader", "css-loader"],
     },
   ],
 },

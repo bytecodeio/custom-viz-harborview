@@ -1,4 +1,5 @@
 import { TooltipYAlignment } from "chart.js";
+import { CSSProperties } from "react";
 
 export interface Fields {
   dimensions: string[];
@@ -8,25 +9,18 @@ export interface Fields {
   dimensionsLabel: string[];
 }
 
-export interface TooltipRow {
-  hasPreviousPeriod: boolean;
-  measureValue: string;
-  periodComparisonValue: number;
-  pivotColor: string;
-  pivotText: string;
-}
 
 export interface TooltipData {
-  dimensionLabel: string;
-  left: string;
-  rows: TooltipRow[];
-  top: string;
+  left: CSSProperties['left'];
+  top: CSSProperties['top'];
   yAlign: TooltipYAlignment;
+  dimensionLabel: string;
+  dimensionValue: string;
   measureValue: string;
-  dimensionName: string;
+  comparisonMeasureValue: string;
   measureLabel: string;
-  dimensionLabel0: string;
-  measureLabel0: string;
+  comparisonMeasureLabel: string,
+  comparisonPercent: string;
 }
 
 // API Globals

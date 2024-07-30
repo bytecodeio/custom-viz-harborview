@@ -25,8 +25,6 @@ looker.plugins.visualizations.add({
   // such as updated data, configuration options, etc.
   updateAsync: function (data, element, config, queryResponse, details, done) {
 
-
-
     const { measure_like: measureLike } = queryResponse.fields;
     const { dimension_like: dimensionLike } = queryResponse.fields;
 
@@ -93,23 +91,7 @@ looker.plugins.visualizations.add({
 
     // config
     const configOptions: ConfigOptions = {
-      titleText: {
-        type: "string",
-        display: "text",
-        default: "Title Text",
-        label: "Title",
-        placeholder: "Title Text",
-        order: 1,
-      },
-      titleSize: {
-        type: "string",
-        label: "Title Font Size",
-        default: "24px",
-        display: "text",
-        placeholder: "24px",
 
-        order: 2,
-      },
       showXAxisLabel: {
         type: "boolean",
         label: "Show X Axis Label",
@@ -181,32 +163,24 @@ looker.plugins.visualizations.add({
         order: 12,
       },
 
-      showPercentToggle: {
-        type: "boolean",
-        label: "Show A Percent/Absolute Toggle",
-        default: false,
-        order: 13,
-      },
-
       colorByPerformance: {
         type: "boolean",
         label: "Color bars and labels by performance",
         default: true,
         order: 14,
       },
-
-      maximumPercentSaturation: {
-        type: "number",
-        label: "Delata % for maximum coloration",
-        default: 10,
-        order: 15,
+      referenceColor: {
+        type: 'array',
+        label: 'Reference Color',
+        display: 'color',
+        default: '#fff97f',
+        order: 23,
       },
-
       color_range: {
         type: 'array',
         label: 'Color Range',
         display: 'colors',
-        default: ['#1A73E8', '#12B5CB', '#E52592', '#E8710A', '#F9AB00', '#dd3333', '#80ce5d', '#f78131', '#369dc1', '#c572d3', '#36c1b3', '#b57052', '#ed69af'],
+        default: ['#02876c', '#2f9b87', '#6AAFA1', '#D1A6A8', '#db4948', '#a90100'],
         order: 24,
       }
     };

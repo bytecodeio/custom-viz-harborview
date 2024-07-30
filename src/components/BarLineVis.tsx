@@ -4,6 +4,7 @@ import {
   LookerChartUtils,
   TooltipData,
   TooltipRow,
+  TooltipValues,
   VisConfig,
   VisData,
 } from "../types";
@@ -38,8 +39,7 @@ import Tooltip from "./Tooltip";
 import { Chart } from "react-chartjs-2";
 import Annotation from 'chartjs-plugin-annotation';
 import "bootstrap/scss/bootstrap.scss";
-import Button from "react-bootstrap/Button";
-import ButtonGroup from "react-bootstrap/ButtonGroup";
+import chroma from 'chroma-js';
 
 ChartJS.register(
   Annotation,
@@ -67,7 +67,6 @@ interface BarLineVisProps {
   lookerCharts: LookerChartUtils;
   lookerVis?: any;
   element: HTMLElement;
-  hasCurrency: boolean;
 }
 
 const chartPlugins = [
@@ -98,7 +97,6 @@ function BarLineVis({
   config,
   lookerCharts,
   element,
-  hasCurrency,
 }: BarLineVisProps): JSX.Element {
 
 
@@ -110,18 +108,13 @@ function BarLineVis({
     xAxisText,
     showYAxisLabel,
     yAxisText,
-    titleText,
-    showKpi,
-    kpiUnit,
     showLineChartGradient,
     showAllValuesInTooltip,
-    titleSize,
     xAxisSize,
     yAxisSize,
     color_range,
     showPercentToggle,
-    colorByPerformance,
-    maximumPercentSaturation
+    colorByPerformance
   } = config;
 
   // Chart type toggle
@@ -141,16 +134,6 @@ function BarLineVis({
     chartTypeOptions[0].value
   );
 
-  enum ValueFormat {
-    Decimal = "decimal",
-    Currency = "currency",
-    Percent = "percent",
-  }
-
-  const [valueFormat, setValueFormat] = useState<ValueFormat>(
-    hasCurrency? ValueFormat.Currency : ValueFormat.Decimal
-  );
-
   const chartValueOptions = [
     {
       label: "100%",
@@ -160,7 +143,7 @@ function BarLineVis({
       label: "Absolute",
       value: "raw",
     },
-    
+
   ];
 
   const [selectedChartValue, setSelectedChartValue] = useState(
@@ -170,11 +153,10 @@ function BarLineVis({
   const dimensionName = fields.dimensions[0];
   const measureName = fields.measures[0];
   const benchmarkMeasureName = fields.measures[1];
-  const previousPeriodFieldName = fields.measures[0];
 
   const dimensionLabel = fields.dimensionsLabel[0];
   const measureLabel = fields.measuresLabel[0];
-
+  const comparisonMeasureLabel = fields.measuresLabel[1];
 
   const [firstData = {}] = data;
   let cols_to_hide = [];
@@ -222,61 +204,81 @@ function BarLineVis({
 
   let benchmarkAnnotations: any[] = [];
 
+  const formatDecimal = (value: number) => {
+    console.log('value:', value)
+    if (value >= 1000 && value < 1000000) {
+      return (value / 1000).toFixed(1) + 'K'; // Convert to K for thousands
+    } else if (value >= 1000000) {
+      return (value / 1000000).toFixed(1) + 'M'; // Convert to M for millions
+    } else if (value < 10) {
+      return value.toFixed(2);
+    } else {
+      return value.toFixed(0); // Keep as is for values less than 1000
+    }
+  }
+  const formatDollar = (value: number) => {
+    // For dollar format
+    if (value >= 1000 && value < 1000000) {
+      return '$' + (value / 1000).toFixed(1) + 'K'; // Convert to K for thousands
+    } else if (value >= 1000000) {
+      return '$' + (value / 1000000).toFixed(1) + 'M'; // Convert to M for millions
+    } else if (value < 10) {
+      return '$' + value.toFixed(2);
+    } else {
+      return '$' + value.toFixed(0); // Keep as is for values less than 1000
+    }
+  }
+  // Formatter function to format numbers as dollars or with K/M suffixes
+  const formatValue = (value: number) => {
+    if (selectedChartValue === "raw" && valueFormat === ValueFormat.Decimal) {
+      return formatDecimal(value);
+    } else if (selectedChartValue === "raw" && valueFormat === ValueFormat.Currency) {
+      return formatDollar(value);
+    } else if (selectedChartValue === "percent") {
+      return (100 * value).toFixed(1) + '%';
+    } else console.log("Error in formatting values.: selectedChartValue: ", selectedChartValue, "valueFormat: ", valueFormat);
+  };
+
+  const formatDollarOrDecimal = (value: number, isDollar: boolean) => {
+    if (isDollar) {
+      return formatDollar(value);
+    } else {
+      return formatDecimal(value);
+    }
+  };
+  const deltaFormatter = (value: number) => {
+    if (value >= 0) {
+      return "+" + (100 * value).toFixed(1) + '%';
+    } else {
+      return (100 * value).toFixed(1) + '%';
+    }
+  };
+
+
+  let columnColor = colors ? colors : ['black'];
+  if (colorByPerformance) {
+    columnColor = data.map((row) => {
+      const comparisonValue = row[benchmarkMeasureName].value;
+      const currentValue = row[measureName].value;
+      if (!currentValue || currentValue === 0) return '#bfbfbf'; // Grey
+
+      const delta = (currentValue - comparisonValue) / comparisonValue;
+
+      if (delta >= 0.2) return color_range[0];
+      else if (delta >= 0.1) return color_range[1];
+      else if (delta >= 0) return color_range[2];
+      else if (delta >= -0.1) return color_range[3];
+      else if (delta >= -0.2) return color_range[4];
+      else return color_range[5];
+
+    })
+  }
+
   function updateChartData(chartType: ChartType) {
     let datasets = [];
     let canvasElement = document.getElementById("chart") as HTMLCanvasElement;
     if (canvasElement) {
       const ctx = canvasElement.getContext("2d");
-
-
-      const formatDecimal = (value: number) => {
-        if (value >= 1000 && value < 1000000) {
-          return (value / 1000).toFixed(1) + 'K'; // Convert to K for thousands
-        } else if (value >= 1000000) {
-          return (value / 1000000).toFixed(1) + 'M'; // Convert to M for millions
-        } else if (value < 10) {
-          return value.toFixed(2);
-        } else {
-          return value.toFixed(0); // Keep as is for values less than 1000
-        }
-      }
-      const formatDollar = (value: number) => {
-        // For dollar format
-        if (value >= 1000 && value < 1000000) {
-          return '$' + (value / 1000).toFixed(1) + 'K'; // Convert to K for thousands
-        } else if (value >= 1000000) {
-          return '$' + (value / 1000000).toFixed(1) + 'M'; // Convert to M for millions
-        } else if (value < 10) {
-          return '$' + value.toFixed(2);
-        } else {
-          return '$' + value.toFixed(0); // Keep as is for values less than 1000
-        }
-      }
-      // Formatter function to format numbers as dollars or with K/M suffixes
-      const formatValue = (value: number) => {
-        if (selectedChartValue === "raw" && valueFormat === ValueFormat.Decimal) {
-          return formatDecimal(value);
-        } else if (selectedChartValue === "raw" && valueFormat === ValueFormat.Currency) {
-          return formatDollar(value);
-        } else if (selectedChartValue === "percent") {
-          return (100 * value).toFixed(1) + '%';
-        } else console.log("Error in formatting values.: selectedChartValue: ", selectedChartValue, "valueFormat: ", valueFormat);
-      };
-
-      const formatDollarOrDecimal = (value: number) => {
-        if (valueFormat === ValueFormat.Currency) {
-          return formatDollar(value);
-        } else {
-          return formatDecimal(value);
-      }
-    };
-      const deltaFormatter = (value: number) => {
-        if (value >= 0) {
-          return "+" + (100 * value).toFixed(1) + '%';
-        } else {
-          return (100 * value).toFixed(1) + '%';
-        }
-      };
 
       if (hasPivot) {
         const pivotValues = Object.keys(data[0][measureName]);
@@ -294,15 +296,15 @@ function BarLineVis({
                 return Number(row[measureName][pivotValue].value);
               }
             });
-            const deltaColumnData = data.map(
-              (row, i) => {
-                const lastYear = row[benchmarkMeasureName][pivotValue].value;
-                const currentYear = row[measureName][pivotValue].value;
-                if (lastYear === 0 || currentYear === 0) return 0;
-                return (Number(row[measureName][pivotValue].value)-
-                Number(row[benchmarkMeasureName][pivotValue].value))/
-                Number(row[benchmarkMeasureName][pivotValue].value)                
-              });
+          const deltaColumnData = data.map(
+            (row, i) => {
+              const lastYear = row[benchmarkMeasureName][pivotValue].value;
+              const currentYear = row[measureName][pivotValue].value;
+              if (lastYear === 0 || currentYear === 0) return 0;
+              return (Number(row[measureName][pivotValue].value) -
+                Number(row[benchmarkMeasureName][pivotValue].value)) /
+                Number(row[benchmarkMeasureName][pivotValue].value)
+            });
           datasets.push({
             datalabels: {
               anchor: 'center', // Position the anchor of the label in the center for better control
@@ -313,7 +315,7 @@ function BarLineVis({
                 size: config.labelFontSize,
               },
               color: getBestTextColor(colors[i]), // Outputs 'white' or 'black' based on contrast
-              formatter: (value: any, context: any) => formatValue(value)
+              formatter: (value: any, context: any) => formatDecimal(value)
             },
             labels: pivotValues,
             type: chartType,
@@ -330,15 +332,15 @@ function BarLineVis({
           });
           datasets.push({
             datalabels: {
-              anchor: 'center', 
+              anchor: 'center',
               align: "start",
               offset: -10,
               font: {
                 size: config.labelFontSize,
               },
-              color: (context: any) => deltaColumnData[context.dataIndex] > 0 ? 'green': 'orange', // Outputs 'white' or 'black' based on contrast
+              color: (context: any) => deltaColumnData[context.dataIndex] > 0 ? 'green' : 'orange', // Outputs 'white' or 'black' based on contrast
               formatter: (value: any, context: any) => deltaFormatter(deltaColumnData[context.dataIndex])
-            
+
             },
             labels: pivotValues,
             type: chartType,
@@ -368,7 +370,7 @@ function BarLineVis({
             color: '#444', // Choose a color that stands out
             formatter: (value: any, context: any) => {
               // Assuming the total for each stack is at the same index as the context's dataIndex
-              return formatDollarOrDecimal(rowTotals[context.dataIndex]);
+              return formatDecimal(rowTotals[context.dataIndex]);
             }
           },
           label: 'Total', // Label for the dataset, won't actually display since we're using this dataset only for the datalabels
@@ -385,85 +387,36 @@ function BarLineVis({
 
       }
       else {
-        
-        let columnColor = colors[0];
-        if(colorByPerformance) {
-          columnColor = data.map((row) => {
-            const lastYear = row[benchmarkMeasureName].value;
-            const currentYear = row[measureName].value;
-            if (lastYear === 0 || currentYear === 0) return 'black';
-            
-            const delta = (currentYear - lastYear) / lastYear;
-
-            if (delta > maximumPercentSaturation/100) return `hsl(120, 100%, 20%)`;
-            if (delta < -maximumPercentSaturation/100) return "red";
-
-            const transitionRange = maximumPercentSaturation / 100;
-            const adjustedDelta = Math.abs(delta) / transitionRange; // Normalize delta to the transition range
-            let saturation: number =0
-            let lightness: number = 0
-            let hue: number = 0
-            if (delta>0) {
-              // Green
-              saturation = 10 + (50 * adjustedDelta);
-              lightness = 90 - (40 * adjustedDelta) ; // Keeping lightness constant for simplicity
-              // Use HSL for color to easily adjust saturation. Assuming green is at 120 degrees and red at 0 degrees in HSL
-              hue = delta > 0 ? 150-(45*adjustedDelta) : 0; // Choose hue based on positive or negative delta
-            } else {
-              // Red
-              saturation = 10 + (50 * adjustedDelta);
-              lightness = 90 - (40 * adjustedDelta) ; 
-              hue =  0; 
-            }
-            console.log(`hsl(${hue}, ${saturation}%, ${lightness}%)`)
-            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-            
-          })
-        }
-
-        const deltaColumnData = data.map(
-          (row, i) => {
-            const benchmark = row[benchmarkMeasureName].value;
-            const currentYear = row[measureName].value;
-            if (benchmark === 0 || currentYear === 0) return 0;
-            return (Number(row[measureName].value)-
-            Number(row[benchmarkMeasureName].value))/
-            Number(row[benchmarkMeasureName].value)                
-          });
-
+        let finalColor = colorByPerformance ? columnColor : `${color_range ? colors[0] : colors[0]}`
         datasets.push({
+
           datalabels: {
-            anchor: 'end', // Position the anchor of the label in the center for better control
-            align: 'end',
-            offset: 0,
-            rotation: -90,
-            color: colorByPerformance ? columnColor : `${color_range ? colors[0] : 'black'}`,
-            font: {
-              weight: '600',
-              size: config.labelFontSize
+            display: (context) => {
+              const value = data[context.dataIndex][measureName].value;
+              return !value || value === 0
             },
-            formatter: (value: any, context: any) => {
-              // Access the delta value for the current data point
-              const deltaValue = deltaFormatter(deltaColumnData[context.dataIndex]);
-              // Combine the value and delta into a 2-line label
-              return [value, deltaValue];
-            }
+            formatter: formatDecimal,
           },
           labels: [],
           type: chartType,
-          color: columnColor, // Outputs 'white' or 'black' based on contrast
+          color: columnColor,
           label: measureLabel,
-          backgroundColor:
-            colorByPerformance ? columnColor : `${color_range ? colors[0] : colors[0]}`,
-          borderColor: `${color_range ? colors[0] : colors[0]}`,
-          pointBackgroundColor: `${color_range ? colors[0] : colors[0]}`,
-          data: data.map((row) => row[measureName].value),
+          backgroundColor: finalColor.map(x => chroma(x).alpha(0.3).css()),
+          borderColor: finalColor,
+          pointBackgroundColor: finalColor,
+          borderWidth: 2,
+          data: data.map((row) => {
+            if (!row[measureName].value || row[measureName].value === 0) {
+              return row[benchmarkMeasureName].value;
+            }
+            return row[measureName].value
+          }),
           yAxisID: "yLeft",
           fill,
+          borderRadius: 5,
         });
 
-        // Generate dynamic annotations based on benchmark values
-        
+
       }
       setChartData({ labels, datasets });
     }
@@ -492,7 +445,6 @@ function BarLineVis({
 
   function tooltipHandler(
     context: TooltipContext,
-    isYAxisCurrency: boolean,
     setTooltip: (newState: TooltipData | null) => void
   ) {
     const isTooltipVisible = context.tooltip.opacity !== 0;
@@ -500,83 +452,22 @@ function BarLineVis({
       const position = context.chart.canvas.getBoundingClientRect();
       const { dataIndex } = context.tooltip.dataPoints[0];
       const lookerRow = data[dataIndex];
+      const currentPeriodValue = lookerRow[measureName].value;
+      // Period comparison
+      const previousPeriodValue =
+        lookerRow[benchmarkMeasureName].value;
 
-      let rows: TooltipRow[] = [];
-      if (showAllValuesInTooltip) {
-        Object.entries(lookerRow[measureName]).forEach(
+      const hasCurrentValue: boolean = currentPeriodValue !== null && currentPeriodValue !== 0;
+      const periodComparisonPercent =
+        ((currentPeriodValue - previousPeriodValue) /
+          previousPeriodValue) *
+        100;
 
-          ([pivotName, { value: currentPeriodValue }], i) => {
-
-
-            // Period comparison
-            const previousPeriodValue =
-              lookerRow[previousPeriodFieldName][pivotName].value;
-
-            const hasPreviousPeriod =
-              hasPeriodComparisonMeasure && !!previousPeriodValue;
-            const periodComparisonValue =
-              ((currentPeriodValue - previousPeriodValue) /
-                previousPeriodValue) *
-              100;
-
-
-
-            rows.push({
-              hasPreviousPeriod,
-
-              measureValue: `${isYAxisCurrency ? "$" : ""
-                }${currentPeriodValue}`,
-
-              periodComparisonValue,
-              pivotColor: `#${colors[i]}`,
-              pivotText: pivotName,
-
-
-            });
-
-
-          }
-        );
-      }
-
-
-      else {
-
-        const pivotValue = context.tooltip.dataPoints[0].dataset.label;
-
-
-        const previousPeriodValue =
-          data[dataIndex][periodComparisonMeasure][pivotValue].value;
-        const currentPeriodValue = context.tooltip.dataPoints[0].raw as number;
-
-        const hasPreviousPeriod =
-          hasPeriodComparisonMeasure && !!previousPeriodValue;
-        const periodComparisonValue =
-          ((currentPeriodValue - previousPeriodValue) / previousPeriodValue) *
-          100;
-
-        rows = [
-          {
-            hasPreviousPeriod,
-            measureValue: `${isYAxisCurrency ? "$" : ""}${context.tooltip.dataPoints[0].formattedValue
-              }`,
-
-            periodComparisonValue,
-            pivotColor: context.tooltip.dataPoints[0].dataset
-              .borderColor as string,
-            pivotText: context.tooltip.dataPoints[0].dataset.label,
-          },
-        ];
-      }
-
-      setTooltip({
-        dimensionLabel0: `${dimensionLabel}:`,
-        dimensionLabel: `${context.tooltip.title[0]}`,
+      const tooltipArguments: TooltipData =  {
+        // dimensionLabel: `${context.tooltip.title[0]}`,
         measureLabel: `${context.tooltip.dataPoints[0].dataset.label}: `,
-        measureLabel0: `${context.tooltip.dataPoints[0].formattedValue}`,
-        left:
-          position.left + window.pageXOffset + context.tooltip.caretX + "px",
-        rows,
+        // measureLabel0: `${context.tooltip.dataPoints[0].formattedValue}`,
+        left: position.left + window.pageXOffset + context.tooltip.caretX + "px",
         top:
           position.top +
           window.pageYOffset +
@@ -584,37 +475,98 @@ function BarLineVis({
           20 +
           "px",
         yAlign: context.tooltip.yAlign,
-      });
+        dimensionLabel: `${dimensionLabel}`,
+        dimensionValue: lookerRow[dimensionName].rendered as string ?? lookerRow[dimensionName].value,
+        measureValue: `${formatDecimal(currentPeriodValue)}`,
+        comparisonMeasureValue: `${formatDecimal(previousPeriodValue)}`,
+        // measureLabel: `${measureLabel}:`,
+        comparisonMeasureLabel: `${comparisonMeasureLabel}`,
+        comparisonPercent: `${periodComparisonPercent.toFixed(1)}%`,
 
-    } else {
+      }
+      console.log('tooltip args: ',  tooltipArguments)
+      setTooltip(tooltipArguments);
+    } else { 
       setTooltip(null);
-    }
+     }
   }
 
 
   const annotations = data.reduce((acc, row, index) => {
-    const benchmark = row[benchmarkMeasureName].value;
+    const comparisonValue = row[benchmarkMeasureName].value;
     const annotationName = `benchmark-${index}`;
-  
+    const currentValue = row[measureName].value;
+    // determine if the primary value is null or zero and abort annotation creation if so
+
+    if (!currentValue || currentValue === 0) return acc;
+
     // Assuming 'index' correctly maps to the bar's position on the x-axis
     // and 'benchmark' is the value for the y-axis height
     acc[annotationName] = {
       type: 'line',
       mode: 'vertical',
-      xMin: index -0.45, // Position the line at the start of the bar
-      xMax: index +0.45, // Position the line at the end of the bar (for a single point, xMin = xMax)
-      yMin: benchmark-3, // The bottom of the line (can be 0 if you want it to start from the bottom)
-      yMax: benchmark+3, // The top of the line (the benchmark value)
-      borderColor: 'yellow',
-      color: 'yellow',
+      xMin: index - 0.45, // Position the line at the start of the bar
+      xMax: index + 0.45, // Position the line at the end of the bar (for a single point, xMin = xMax)
+      yMin: comparisonValue - 3, // The bottom of the line (can be 0 if you want it to start from the bottom)
+      yMax: comparisonValue + 3, // The top of the line (the benchmark value)
+      borderColor: config.referenceColor || 'yellow',
+      color: config.referenceColor || 'yellow',
       borderWidth: 3,
       xScaleID: 'x',
       yScaleID: 'yLeft',
     };
-  
+
+    const labelAnnotationName = `label-${index}`;
+    const deltaLabelAnnotationname = `deltaLabel-${index}`;
+    let deltaColumnData
+    if (comparisonValue === 0 || currentValue === 0) deltaColumnData = 0;
+    deltaColumnData = (Number(row[measureName].value) -
+      Number(row[benchmarkMeasureName].value)) /
+      Number(row[benchmarkMeasureName].value)
+
+    const labelPosition = Math.max(comparisonValue, currentValue) + 5;
+    const deltaValue = deltaFormatter(deltaColumnData);
+    acc[labelAnnotationName] = {
+      type: 'label',
+      xValue: index,
+      yValue: labelPosition,
+      backgroundColor: 'transparent',
+      content: formatDecimal(currentValue),
+      color: 'black', // Main value color
+      font: {
+        weight: '600',
+        size: config.labelFontSize,
+      },
+      position: {
+        x: 'center',
+        y: 'bottom',
+      },
+      xAdjust: 0,
+      yAdjust: -10, // Adjust based on your chart's scale
+    }
+    acc[deltaLabelAnnotationname] = {
+      type: 'label',
+      xValue: index,
+      yValue: labelPosition,
+      backgroundColor: 'transparent',
+      content: deltaValue,
+      color: columnColor[index],
+      font: {
+        weight: '600',
+        size: config.labelFontSize,
+      },
+      position: {
+        x: 'center',
+        y: 'bottom',
+      },
+      xAdjust: 0,
+      yAdjust: -25, // Adjust based on your chart's scale
+    }
+
+
     return acc;
   }, {});
-  
+
 
   // chart options
   const chartOptions: ChartOptions<"bar" | "line"> = useMemo(
@@ -675,7 +627,7 @@ function BarLineVis({
 
             },
             usePointStyle: true,
-            filter: function(legendItem, chartData) {
+            filter: function (legendItem, chartData) {
               // Assuming `showInLegend` is a custom property you've added to your datasets
               // Only show the dataset in the legend if `showInLegend` is true
               const dataset = chartData.datasets[legendItem.datasetIndex];
@@ -689,10 +641,10 @@ function BarLineVis({
           enabled: false,
           position: "nearest",
           external: (context: any) =>
-            tooltipHandler(context, hasCurrency, setTooltip),
+            tooltipHandler(context, setTooltip),
         },
-        annotation: { 
-          // annotations: benchmarkAnnotations,
+        annotation: {
+          clip: false,
           annotations: annotations,
         }
       },
@@ -717,7 +669,7 @@ function BarLineVis({
               size: `${xAxisSize ? xAxisSize : 14}`
             },
           }
-          
+
         },
 
         yLeft: {
@@ -728,9 +680,10 @@ function BarLineVis({
           stacked: true,
           // display: false,
           ticks: {
+            padding: 50,
             display: false,
             callback: function (value: number) {
-              return `${hasCurrency ? "$" : ""}${formatNumber(value)}`;
+              return formatNumber(value);
             },
           },
           title: {
@@ -748,26 +701,10 @@ function BarLineVis({
 
   return (
     <div id="vis-wrapper">
-        
+
 
 
       <div id="chart-wrapper">
-      { showPercentToggle ?<div id="controls">
-            <ButtonGroup size="sm">
-              {chartValueOptions.map((chartValueOption) => (
-                <Button
-                  active={selectedChartValue === chartValueOption.value}
-                  key={chartValueOption.value}
-                  onClick={() => {setSelectedChartValue(chartValueOption.value)}}
-                // variant="outline-secondary"
-                >
-                  {chartValueOption.label}
-                </Button>
-              ))}
-            </ButtonGroup>
-          </div>
-          : null}
-        
         <Chart
           type={selectedChartType}
           data={chartData}
@@ -775,7 +712,7 @@ function BarLineVis({
           id="chart"
           plugins={chartPlugins}
         />
-        {tooltip && <Tooltip hasPivot={hasPivot} hasNoPivot={hasNoPivot} tooltipData={tooltip} />}
+        {tooltip && <Tooltip {...tooltip} />}
       </div>
     </div>
   );
