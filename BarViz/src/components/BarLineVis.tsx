@@ -153,6 +153,7 @@ function BarLineVis({
   const dimensionName = fields.dimensions[0];
   const measureName = fields.measures[0];
   const benchmarkMeasureName = fields.measures[1];
+  const futureForecastMeasureName = fields.measures[2];
 
   const dimensionLabel = fields.dimensionsLabel[0];
   const measureLabel = fields.measuresLabel[0];
@@ -205,7 +206,6 @@ function BarLineVis({
   let benchmarkAnnotations: any[] = [];
 
   const formatDecimal = (value: number) => {
-    console.log('value:', value)
     if (value >= 1000 && value < 1000000) {
       return (value / 1000).toFixed(1) + 'K'; // Convert to K for thousands
     } else if (value >= 1000000) {
@@ -260,7 +260,7 @@ function BarLineVis({
     columnColor = data.map((row) => {
       const comparisonValue = row[benchmarkMeasureName].value;
       const currentValue = row[measureName].value;
-      if (!currentValue || currentValue === 0) return '#bfbfbf'; // Grey
+      
 
       const delta = (currentValue - comparisonValue) / comparisonValue;
 
@@ -389,13 +389,8 @@ function BarLineVis({
       else {
         let finalColor = colorByPerformance ? columnColor : `${color_range ? colors[0] : colors[0]}`
         datasets.push({
-
           datalabels: {
-            display: (context) => {
-              const value = data[context.dataIndex][measureName].value;
-              return !value || value === 0
-            },
-            formatter: formatDecimal,
+            display: false
           },
           labels: [],
           type: chartType,
@@ -406,16 +401,38 @@ function BarLineVis({
           pointBackgroundColor: finalColor,
           borderWidth: 2,
           data: data.map((row) => {
-            if (!row[measureName].value || row[measureName].value === 0) {
-              return row[benchmarkMeasureName].value;
-            }
             return row[measureName].value
           }),
           yAxisID: "yLeft",
           fill,
-          borderRadius: 5,
+          // stack: 'stack1',
+          borderRadius: 2,
         });
-
+        // Make a dataset for the future forecasts.
+        // This dataset will be the difference between the future forecast and the benchmark measure.
+        // It will be gray and stack on top of the existing columns of the other series
+        datasets.push({
+          datalabels: {
+            display: (context) => {
+              const value = data[context.dataIndex][measureName].value;
+              return !value || value === 0
+            },
+            formatter: formatDecimal,
+          },
+          labels: [],
+          type: chartType,
+          color: '#333333',
+          label: 'Future Forecast',
+          borderWidth: 2,
+          data: data.map((row) => {
+            return  row[futureForecastMeasureName].value - row[benchmarkMeasureName].value
+          }),
+          yAxisID: "yLeft",
+          fill: false,
+          // stack: 'stack1',
+          borderRadius: 2,
+        });
+        
 
       }
       setChartData({ labels, datasets });
@@ -456,7 +473,6 @@ function BarLineVis({
       // Period comparison
       const previousPeriodValue =
         lookerRow[benchmarkMeasureName].value;
-
       const hasCurrentValue: boolean = currentPeriodValue !== null && currentPeriodValue !== 0;
       const periodComparisonPercent =
         ((currentPeriodValue - previousPeriodValue) /
@@ -464,9 +480,6 @@ function BarLineVis({
         100;
 
       const tooltipArguments: TooltipData =  {
-        // dimensionLabel: `${context.tooltip.title[0]}`,
-        measureLabel: `${context.tooltip.dataPoints[0].dataset.label}: `,
-        // measureLabel0: `${context.tooltip.dataPoints[0].formattedValue}`,
         left: position.left + window.pageXOffset + context.tooltip.caretX + "px",
         top:
           position.top +
@@ -475,16 +488,20 @@ function BarLineVis({
           20 +
           "px",
         yAlign: context.tooltip.yAlign,
-        dimensionLabel: `${dimensionLabel}`,
+        dimensionLabel: config.xAxisName,
+        measureLabel: config.actualsName,
+        comparisonMeasureLabel: config.forecastName,
+        unrealizedLabel: config.unresolvedForecastName,
         dimensionValue: lookerRow[dimensionName].rendered as string ?? lookerRow[dimensionName].value,
         measureValue: `${formatDecimal(currentPeriodValue)}`,
         comparisonMeasureValue: `${formatDecimal(previousPeriodValue)}`,
-        // measureLabel: `${measureLabel}:`,
-        comparisonMeasureLabel: `${comparisonMeasureLabel}`,
+        unrealizedValue: `${formatDecimal(lookerRow[futureForecastMeasureName].value - lookerRow[benchmarkMeasureName].value)}`,
+        
         comparisonPercent: `${periodComparisonPercent.toFixed(1)}%`,
+        
 
       }
-      console.log('tooltip args: ',  tooltipArguments)
+      // console.log('tooltip args: ',  tooltipArguments)
       setTooltip(tooltipArguments);
     } else { 
       setTooltip(null);
@@ -531,7 +548,7 @@ function BarLineVis({
       xValue: index,
       yValue: labelPosition,
       backgroundColor: 'transparent',
-      content: formatDecimal(currentValue),
+      content: currentValue>0 ? formatDecimal(currentValue): null,
       color: 'black', // Main value color
       font: {
         weight: '600',

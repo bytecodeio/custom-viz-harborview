@@ -8,7 +8,7 @@ import { TooltipData } from "../types";
 const Tooltip: React.FC<TooltipData> = (
   props
 ) => {
-  const  {  left, top, yAlign, dimensionLabel, dimensionValue, measureValue, comparisonMeasureValue, measureLabel, comparisonMeasureLabel, comparisonPercent} = props
+  const  {  left, top, yAlign, dimensionLabel, dimensionValue, measureValue, comparisonMeasureValue, measureLabel, comparisonMeasureLabel, comparisonPercent, unrealizedLabel, unrealizedValue} = props
   console.log('in the final tooltip:',  left, top, yAlign, dimensionLabel, dimensionValue, measureValue, comparisonMeasureValue, measureLabel, comparisonMeasureLabel, comparisonPercent)
   return (
     <div
@@ -19,6 +19,8 @@ const Tooltip: React.FC<TooltipData> = (
       <div className="measure-label">{measureLabel}: {measureValue}</div>
       <div className="comparison-measure-label">{comparisonMeasureLabel}: {comparisonMeasureValue}</div>
       <div className="comparison-percent">Difference: {comparisonPercent}</div>
+      <div className="unrealized-label">{unrealizedLabel}: {unrealizedValue}</div>
+      
     </div>
   );
 };

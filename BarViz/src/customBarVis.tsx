@@ -34,29 +34,18 @@ looker.plugins.visualizations.add({
 
     }));
 
-
     const measures1 = measureLike.map((measure) => ({
       label: measure.label_short ?? measure.label,
       name: measure.name,
     }));
 
-
     const fieldOptions = [...dimensions1, ...measures1].map((dim) => ({
       [dim.label]: queryResponse.data.map(row => row[dim.name].value).join(",")
     }));
 
-
     const empty = [...dimensions1, ...measures1].map((dim) => ({
       thing: queryResponse.data.map(row => row[dim.name].value).join(",")
     }));
-
-
-
-
-    const fieldOptions2: FieldOptions2[] = [...dimensions1, ...measures1].map((dim) => ({
-      [dim.label]: dim.label
-    }));
-
 
     interface Measure {
       label: string;
@@ -73,7 +62,7 @@ looker.plugins.visualizations.add({
       name: measure.name,
     }));
 
-    const dimensions: Dimensions[] = dimensionLike.map((dimension) => ({
+    const dimensions: Dimension[] = dimensionLike.map((dimension) => ({
       label: dimension.label_short ?? dimension.label,
       name: dimension.name,
     }));
@@ -182,7 +171,32 @@ looker.plugins.visualizations.add({
         display: 'colors',
         default: ['#02876c', '#2f9b87', '#6AAFA1', '#D1A6A8', '#db4948', '#a90100'],
         order: 24,
+      },
+      xAxisName: {
+        type: 'string',
+        label: 'X Axis Name',
+        default: 'X Axis',
+        order: 25,
+      },
+      actualsName: {
+        type: 'string',
+        label: 'Actuals Name',
+        default: 'Actuals',
+        order: 26,
+      },
+      forecastName: {
+        type: 'string',
+        label: 'Forecast Name',
+        default: 'Forecast',
+        order: 27,
+      },
+      unresolvedForecastName: {
+        type: 'string',
+        label: 'Unresolved Forecast',
+        default: 'Unresolved Forecast',
+        order: 28,
       }
+      
     };
 
     lookerVis.trigger("registerOptions", configOptions);
@@ -234,7 +248,6 @@ looker.plugins.visualizations.add({
           config={validatedConfig}
           lookerCharts={LookerCharts}
           element={element}
-          hasCurrency={hasCurrency}
         />
       );
 

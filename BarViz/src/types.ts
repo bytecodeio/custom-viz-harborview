@@ -21,6 +21,8 @@ export interface TooltipData {
   measureLabel: string;
   comparisonMeasureLabel: string,
   comparisonPercent: string;
+  unrealizedLabel: string;
+  unrealizedValue: string;
 }
 
 // API Globals
